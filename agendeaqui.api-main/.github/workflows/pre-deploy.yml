@@ -1,0 +1,32 @@
+name: Pre Deploy Check (Build NestJS)
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build:
+    name: Build and Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18 # ou a versão que você usa no projeto
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint (opcional, mas recomendado)
+        run: npm run lint
+
+      - name: Test (opcional, se tiver testes automatizados)
+        run: npm run test
+
+      - name: Build
+        run: npm run build

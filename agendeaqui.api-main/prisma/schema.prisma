@@ -1,0 +1,470 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  extensions        = [postgis]
+}
+
+model Appointment {
+  id                 String             @id @default(uuid())
+  patientId          String
+  endTime            String
+  startTime          String
+  confirmationStatus ConfirmationStatus @default(PENDING)
+  date               DateTime
+  doctorId           String
+  scheduleId         String
+  clinicLocationId   String?
+  clinicServiceId    String?
+  healthPlanId       String?
+  clinicId           String?
+  dataConsentSharing Boolean            @default(false)
+  Clinic             Clinic?            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicLocation     ClinicLocation?    @relation(fields: [clinicLocationId], references: [id])
+  clinicService      ClinicService?     @relation(fields: [clinicServiceId], references: [id])
+  doctor             Doctor             @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  healthPlan         HealthPlan?        @relation(fields: [healthPlanId], references: [id])
+  patient            Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  schedule           Schedule           @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  review             Review?
+}
+
+model BlogPost {
+  id        String         @id
+  title     String
+  content   String
+  tags      String[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime
+  status    BlogPostStatus @default(SKETCH)
+  summary   String
+  userId    String?
+}
+
+model Clinic {
+  id                 String                   @id @default(uuid())
+  name               String
+  userId             String                   @unique
+  cnpj               String
+  about              String?
+  profileImageUrl    String?
+  Appointment        Appointment[]
+  user               User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinicExams        ClinicExam[]             @relation("ClinicExams")
+  healthOperators    ClinicHealthOperator[]
+  locations          ClinicLocation[]
+  services           ClinicService[]
+  clinicSpecialties  ClinicSpecialty[]
+  clinicUsers        ClinicUser[]
+  verificationCodes  DoctorVerificationCode[]
+  MedicalDocument    MedicalDocument[]
+  review             Review[]
+  Schedule           Schedule[]
+  clinicTreatedAreas ClinicTreatedArea[]
+  FavoriteClinics    FavoriteClinics[]
+}
+
+model ClinicExam {
+  id       String @id @default(uuid())
+  clinicId String
+  examId   String
+  clinic   Clinic @relation("ClinicExams", fields: [clinicId], references: [id], onDelete: Cascade)
+  exam     Exam   @relation("ClinicExams", fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, examId])
+}
+
+model ClinicHealthOperator {
+  id               String         @id @default(uuid())
+  clinicId         String
+  healthOperatorId String
+  clinic           Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  healthOperator   HealthOperator @relation(fields: [healthOperatorId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, healthOperatorId])
+}
+
+model ClinicLocation {
+  id          String                   @id @default(uuid())
+  clinicId    String
+  address     String
+  city        String
+  state       String
+  cep         String
+  complement  String?
+  location    Unsupported("geometry")?
+  number      String
+  Appointment Appointment[]
+  clinic      Clinic                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  Schedule    Schedule[]
+}
+
+model ClinicService {
+  id                String          @id @default(uuid())
+  clinicId          String
+  customName        String
+  description       String
+  price             Float
+  serviceCategoryId String
+  Appointment       Appointment[]
+  clinic            Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  serviceCategory   ServiceCategory @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, serviceCategoryId, customName])
+}
+
+model ClinicSpecialty {
+  id          String    @id @default(uuid())
+  clinicId    String
+  specialtyId String
+  clinic      Clinic    @relation(fields: [clinicId], references: [id])
+  specialty   Specialty @relation(fields: [specialtyId], references: [id])
+
+  @@unique([clinicId, specialtyId])
+}
+
+model ClinicUser {
+  id       String @id @default(uuid())
+  userId   String
+  clinicId String
+  role     Role
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ClinicTreatedArea {
+  id            String @id @default(uuid())
+  clinicId      String
+  treatedAreaId String
+
+  clinic      Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  treatedArea TreatedArea @relation(fields: [treatedAreaId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, treatedAreaId])
+  @@index([clinicId])
+  @@index([treatedAreaId])
+}
+
+model DocumentType {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  description String?
+  documents   MedicalDocument[]
+}
+
+model Doctor {
+  id               String                  @id @default(uuid())
+  userId           String?                 @unique
+  crm              String
+  name             String
+  surname          String
+  aboutMe          String?
+  gender           String?
+  birthDay         DateTime?
+  cnpj             String?
+  verified         Boolean                 @default(false)
+  email            String?
+  profileImageUrl  String?
+  Appointment      Appointment[]
+  user             User?                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialtyLinks   DoctorSpecialty[]
+  verificationCode DoctorVerificationCode?
+  Schedule         Schedule[]
+  SharedWithDoctor SharedWithDoctor[]
+}
+
+model DoctorSpecialty {
+  id          String    @id @default(uuid())
+  doctorId    String
+  specialtyId String
+  isPrimary   Boolean   @default(false)
+  doctor      Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  specialty   Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, isPrimary], map: "unique_primary_specialty")
+  @@unique([doctorId, specialtyId])
+}
+
+model DoctorVerificationCode {
+  id        String   @id @default(uuid())
+  doctorId  String   @unique
+  code      String   @unique
+  clinicId  String
+  expiresAt DateTime
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model Exam {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  examTypeId  String?
+  clinicExams ClinicExam[] @relation("ClinicExams")
+  examType    ExamType?    @relation(fields: [examTypeId], references: [id])
+}
+
+model ExamType {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+  exams       Exam[]
+}
+
+model FavoriteClinics {
+  id        String @id @default(uuid())
+  patientId String
+  clinicId  String
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  clinic  Clinic  @relation(fields: [clinicId], references: [id])
+}
+
+model HealthOperator {
+  id                   String                 @id @default(uuid())
+  operatorCompanyName  String
+  operatorRegistry     String
+  clinicHealthOperator ClinicHealthOperator[]
+  healthPlans          HealthPlan[]
+  healthPlanTypes      HealthPlanType[]
+}
+
+model HealthPlan {
+  id               String         @id @default(uuid())
+  healthOperatorId String
+  number           String
+  validUntil       DateTime
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  planName         String
+  accommodation    String
+  situation        String
+  patientId        String
+  isPrimary        Boolean        @default(false)
+  Appointment      Appointment[]
+  healthOperator   HealthOperator @relation(fields: [healthOperatorId], references: [id])
+  patient          Patient        @relation(fields: [patientId], references: [id])
+}
+
+model HealthPlanType {
+  id               String         @id @default(uuid())
+  healthOperatorId String
+  planRegistry     String
+  planName         String
+  situation        String
+  accommodation    String
+  healthOperator   HealthOperator @relation(fields: [healthOperatorId], references: [id])
+}
+
+model MedicalDocument {
+  id         String             @id @default(uuid())
+  url        String
+  blobName   String
+  fileName   String
+  uploadedAt DateTime           @default(now())
+  patientId  String
+  clinicId   String?
+  typeId     String
+  clinic     Clinic?            @relation(fields: [clinicId], references: [id])
+  patient    Patient            @relation(fields: [patientId], references: [id])
+  type       DocumentType       @relation(fields: [typeId], references: [id])
+  sharedWith SharedWithDoctor[]
+}
+
+model MedicalHistory {
+  id                    String   @id @default(uuid())
+  patientId             String   @unique
+  pastDiseases          String?
+  chronicDiseases       String?
+  familySeriousDiseases String?
+  allergies             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  patient               Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Medications {
+  id                 String   @id @default(uuid())
+  patientId          String   @unique
+  currentMedications String[]
+  pastMedications    String[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  patient            Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isRead     Boolean  @default(false)
+  senderId   String
+  receiverId String
+  receiver   User     @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender     User     @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetCode {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  code      String   @unique
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Patient {
+  id              String            @id @default(uuid())
+  userId          String            @unique
+  phone           String
+  name            String
+  surname         String
+  birthDay        DateTime?
+  gender          String?
+  cpf             String            @unique
+  cep             String?
+  city            String?
+  complement      String?
+  number          String?
+  state           String?
+  street          String?
+  profileImageUrl String?
+  appointments    Appointment[]
+  healthPlans     HealthPlan[]
+  MedicalDocument MedicalDocument[]
+  MedicalHistory  MedicalHistory?
+  Medications     Medications?
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review          Review[]
+  FavoriteClinics FavoriteClinics[]
+}
+
+model RefreshToken {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  refreshToken String   @unique
+  expiresAt    DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id            String      @id @default(dbgenerated("gen_random_uuid()"))
+  rating        Int
+  comment       String?
+  created_at    DateTime?   @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?   @default(now()) @db.Timestamp(6)
+  patient_id    String
+  clinic_id     String
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  Clinic        Clinic      @relation(fields: [clinic_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "review_clinic_fk")
+  Patient       Patient     @relation(fields: [patient_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "review_patient_fk")
+}
+
+model Schedule {
+  id               String          @id @default(uuid())
+  doctorId         String?
+  type             ScheduleType
+  clinicId         String?
+  dayOfWeek        Int
+  duration         Int
+  endTime          String
+  startTime        String
+  clinicLocationId String?
+  Appointment      Appointment[]
+  clinic           Clinic?         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicLocation   ClinicLocation? @relation(fields: [clinicLocationId], references: [id], onDelete: Cascade)
+  doctor           Doctor?         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model ServiceCategory {
+  id          String          @id @default(uuid())
+  name        String          @unique
+  services    ClinicService[]
+  specialties Specialty[]     @relation("ServiceCategoryToSpecialty")
+}
+
+model Specialty {
+  id                String            @id @default(uuid())
+  name              String            @unique
+  clinicSpecialties ClinicSpecialty[]
+  doctors           DoctorSpecialty[]
+  serviceCategories ServiceCategory[] @relation("ServiceCategoryToSpecialty")
+}
+
+model SharedWithDoctor {
+  id                String   @id @default(uuid())
+  medicalDocumentId String
+  doctorId          String
+  sharedAt          DateTime @default(now())
+
+  medicalDocument MedicalDocument @relation(fields: [medicalDocumentId], references: [id])
+  doctor          Doctor          @relation(fields: [doctorId], references: [id])
+
+  @@unique([medicalDocumentId, doctorId])
+}
+
+model TreatedArea {
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  clinicTreatedAreas ClinicTreatedArea[]
+}
+
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  password          String
+  role              Role
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  loginCount        Int                @default(0)
+  clinic            Clinic?
+  clinicUsers       ClinicUser[]
+  doctor            Doctor?
+  receivedMessages  Message[]          @relation("ReceiverMessages")
+  sentMessages      Message[]          @relation("SenderMessages")
+  PasswordResetCode PasswordResetCode?
+  patient           Patient?
+  RefreshToken      RefreshToken?
+}
+
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+enum ConfirmationStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  COMPLETED
+  CANCELED
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  PATIENT
+  CLINIC
+  RECEPTIONIST
+}
+
+enum ScheduleType {
+  ONLINE
+  PRESENCIAL
+}
+
+enum BlogPostStatus {
+  SKETCH
+  PUBLISHED
+  INACTIVE
+}

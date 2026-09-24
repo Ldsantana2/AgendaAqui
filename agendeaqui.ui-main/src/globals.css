@@ -1,0 +1,49 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary-green: #283277; /* Bom para botões, indicadores de sucesso e destaques */
+  --secondary-green: #283277; /* Perfeito para hover e para criar contraste com o tom principal */
+  --background-neutral: #f0f4f8; /* Um fundo suave que complementa os tons verdes sem competir com eles */
+  --text-dark-green: #2c3e50; /* Uma cor escura que garante a leitura sem esforço */
+}
+
+/* @media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+} */
+
+html {
+  height: 100vh;
+  body {
+    height: 100%;
+    color: var(--foreground);
+    background: var(--background);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+}
+
+/* Remove dividing line between radio buttons and prevent hover effect */
+.custom-radio-group .ant-radio-button-wrapper::before {
+  display: none !important;
+}
+
+/* Prevent hover effect on unselected radio buttons */
+.custom-radio-group
+  .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-checked):hover {
+  color: inherit !important;
+  background-color: transparent !important;
+}
+
+/* Maintain styling for selected radio buttons when hovered */
+.custom-radio-group .ant-radio-button-wrapper-checked:hover {
+  color: #283277 !important;
+  background-color: #dfecff !important;
+}
